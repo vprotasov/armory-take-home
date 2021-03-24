@@ -34,7 +34,7 @@ public final class ConsoleSupport {
             }
 
             if (DEBUG)
-                out.print("!!! Completed in " + (System.currentTimeMillis() - start));
+                out.println("!!! Completed in " + (System.currentTimeMillis() - start));
 
             out.flush();
         }, "Console Printer Worker").start();

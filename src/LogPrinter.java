@@ -37,12 +37,20 @@ import java.util.*;
  * 2016-12-20T19:01:16Z, Server B started.
  * <p>
  * NOTE, to be documented: log processing errors will be written to error_log.txt in the working dir.
- * This program should produce similar results to > cat *.log | sort -n
+ * This program should produce similar results to > cat *.log | sort -n.
+ * Before running with large number of files i.e. > 512 make sure that console process is configured for the right
+ * number of open files. I.e. on *nix call ulimit -n 10000 to support up to 10000 open files.
  * <p>
  * We assume that all the dates are ISO 8601 format and all the dates always use the 'Z' or '+00' timezone (= UTC),
  * do not use any time zone offset and there are no fractional parts of the seconds.
+ * <p>
  */
 public class LogPrinter {
+    /**
+     * Defines number of files in the folder after which we switch from lexicographical order compare to parsed date compare.
+     */
+    public static final int PARSE_DATE_THRESHOLD = 2000;
+
     public static void main(String[] args) {
         if (args.length != 1) {
             System.err.println("Run with exactly one argument - path to the source log directory.");
@@ -59,9 +67,14 @@ public class LogPrinter {
 
         File[] files = folder.listFiles((dir, name) -> name.endsWith(".log"));
 
+        if (files == null) {
+            System.err.println("Error listing the specified directory.");
+            System.exit(3);
+        }
+
         if (files.length == 0) {
             System.err.println("No log files were found in the specified directory.");
-            System.exit(3);
+            System.exit(4);
         }
 
         try {
@@ -77,10 +90,11 @@ public class LogPrinter {
         ConsoleSupport out = new ConsoleSupport();
 
         List<LogFileEntry> entries = new ArrayList<>(files.length);
+        boolean parseDate = files.length > PARSE_DATE_THRESHOLD;
 
         for (File f : files) {
             try {
-                LogFileEntry fe = new LogFileEntry(f);
+                LogFileEntry fe = new LogFileEntry(f, parseDate);
 
                 fe.parseNextLine();
 
@@ -130,6 +144,7 @@ public class LogPrinter {
 
                 if (first.line == null) { // No more lines left in this file, let's remove it from the list.
                     entries.remove(first);
+
                     break;
                 }
 
